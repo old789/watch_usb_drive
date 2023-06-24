@@ -37,6 +37,17 @@ is_semaphore () {
   return 0
 }
 
+gentle_reboot () {
+  is_semaphore
+  if [ $? -gt 0 ]; then
+    /usr/bin/logger -t $progname The semaphore file found so don\'t reboot
+    exit 1
+  else
+    echo -n > "$semaphore"
+    /sbin/reboot
+  fi
+}
+
 progname=`/usr/bin/basename $0`
 
 is_mount
@@ -46,7 +57,7 @@ if [ $? -gt 0 ]; then
     echo The drive is not mounted
     exit 1
   else
-    /sbin/reboot
+    gentle_reboot
   fi
 fi
 
@@ -57,11 +68,15 @@ if [ $? -gt 0 ]; then
     echo The drive is not accessible
     exit 1
   else
-    is_semaphore && /sbin/reboot || /usr/bin/logger -t $progname The semaphore file found so don\'t reboot
+    gentle_reboot
   fi
 fi
 
-is_semaphore && /bin/rm -f "$semaphore"
+is_semaphore
+if [ $? -gt 0 ]; then
+  /usr/bin/logger -t $progname The semaphore file found and will be deleted
+  /bin/rm -f "$semaphore"
+fi
 
 if [ $debug_mode -gt 0 ]; then
     echo All Ok
