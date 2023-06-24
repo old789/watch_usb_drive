@@ -5,6 +5,7 @@ mpoint='/data'
 tst_folder=$mpoint'/test'
 tst_file=$tst_folder'/tfile'
 tst_str='123qwer'
+semaphore='/var/run/watch_usb'
 debug_mode=1
 
 is_mount () {
@@ -24,6 +25,13 @@ is_disk_good () {
   tst_str1=`cat "tst_file"`
   /bin/rm -f "tst_file"
   if [ "$tst_str" != "$tst_str1" ]; then
+    return 1
+  fi
+  return 0
+}
+
+is_semaphore () {
+  if [ -f "$semaphore" ]; then
     return 1
   fi
   return 0
@@ -49,9 +57,11 @@ if [ $? -gt 0 ]; then
     echo The drive is not accessible
     exit 1
   else
-    /sbin/reboot
+    is_semaphore && /sbin/reboot || /usr/bin/logger -t $progname The semaphore file found so don\'t reboot
   fi
 fi
+
+is_semaphore && /bin/rm -f "$semaphore"
 
 if [ $debug_mode -gt 0 ]; then
     echo All Ok
